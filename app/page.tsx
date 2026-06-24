@@ -1,103 +1,110 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import Stepper from "@/components/Stepper";
+import CVStep from "@/components/CVStep";
+import JDStep, { type JobDescription } from "@/components/JDStep";
+import AnalysisStep from "@/components/AnalysisStep";
+import DarkModeToggle from "@/components/DarkModeToggle";
+import HistoryPanel from "@/components/HistoryPanel";
+import RestoreToast from "@/components/RestoreToast";
+import { Brain, Clock } from "lucide-react";
+import { saveDraft, clearDraft } from "@/lib/storage";
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [step, setStep] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [cvText, setCvText] = useState("");
+  const [jds, setJDs] = useState<JobDescription[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  // ── Autosave draft ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!cvText && jds.length === 0) return;
+    const timer = setTimeout(() => {
+      saveDraft({ cvText, jds, savedAt: new Date().toISOString() });
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [cvText, jds]);
+
+  // ── Step management ─────────────────────────────────────────────────────────
+  const completeStep = (s: number) => {
+    setCompletedSteps((prev) => [...new Set([...prev, s])]);
+    setStep(s + 1);
+  };
+
+  const reset = useCallback(() => {
+    setStep(0);
+    setCompletedSteps([]);
+    setCvText("");
+    setJDs([]);
+    clearDraft();
+  }, []);
+
+  // ── Restore handler ─────────────────────────────────────────────────────────
+  const handleRestore = (restoredCV: string, restoredJDs: JobDescription[]) => {
+    setCvText(restoredCV);
+    setJDs(restoredJDs);
+    if (restoredCV) {
+      setCompletedSteps([0]);
+      setStep(1);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors">
+      {/* Header */}
+      <header className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 sticky top-0 z-30">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-3.5 flex items-center gap-3">
+          <div className="w-8 h-8 bg-[#534AB7] rounded-lg flex items-center justify-center shrink-0">
+            <Brain className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-base font-bold text-gray-800 dark:text-gray-100 leading-none">CareerLens</h1>
+            <p className="text-xs text-gray-400 dark:text-gray-500 leading-none mt-0.5 hidden sm:block">Powered by Groq AI</p>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => setHistoryOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">History</span>
+            </button>
+            <DarkModeToggle />
+          </div>
         </div>
+      </header>
+
+      {/* Main */}
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        <Stepper currentStep={step} onStepClick={setStep} completedSteps={completedSteps} />
+
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 sm:p-8">
+          {step === 0 && (
+            <CVStep onComplete={(text) => { setCvText(text); completeStep(0); }} />
+          )}
+          {step === 1 && (
+            <JDStep jds={jds} onJDsChange={setJDs} onComplete={() => completeStep(1)} />
+          )}
+          {step === 2 && (
+            <AnalysisStep cvText={cvText} jds={jds} onReset={reset} />
+          )}
+        </div>
+
+        {step < 2 && (
+          <p className="text-center text-xs text-gray-400 dark:text-gray-600 mt-4">
+            Step {step + 1} of 3 —{" "}
+            {step === 0 ? "Upload or paste your CV to get started" : "Add job descriptions then click Analyze"}
+          </p>
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+      {/* History panel */}
+      <HistoryPanel isOpen={historyOpen} onClose={() => setHistoryOpen(false)} />
+
+      {/* Restore toast */}
+      <RestoreToast onRestore={handleRestore} />
     </div>
   );
 }
