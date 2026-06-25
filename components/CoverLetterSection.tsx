@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Mail, Loader2, AlertCircle, Copy, Check, Download, RotateCcw, FileText } from "lucide-react";
 import { JobDescription } from "./JDStep";
 
@@ -31,10 +31,20 @@ export default function CoverLetterSection({ cvText, jds, defaultJobTitle, defau
 
   const selectedJD = selectedJDIndex !== null ? jds[selectedJDIndex] : null;
 
+  const storageKey = (title: string) => `cl_${title.trim()}`;
+
+  useEffect(() => {
+    const saved = localStorage.getItem(storageKey(defaultJobTitle));
+    if (saved) setLetter(saved);
+  }, [defaultJobTitle]);
+
   const handleJDSelect = (idx: number) => {
     setSelectedJDIndex(idx);
-    setJobTitle(jds[idx].title);
-    setCompany(jds[idx].company);
+    const jd = jds[idx];
+    setJobTitle(jd.title);
+    setCompany(jd.company);
+    const saved = localStorage.getItem(storageKey(jd.title));
+    setLetter(saved ?? "");
   };
 
   const generate = async () => {
@@ -51,7 +61,9 @@ export default function CoverLetterSection({ cvText, jds, defaultJobTitle, defau
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Generation failed");
-      setLetter(data.letter ?? "");
+      const generated = data.letter ?? "";
+      setLetter(generated);
+      localStorage.setItem(storageKey(jobTitle), generated);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {

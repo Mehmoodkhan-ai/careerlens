@@ -7,6 +7,9 @@ export interface JobDescription {
   title: string;
   company: string;
   text: string;
+  source?: "live" | "ai";
+  platform?: string;
+  location?: string;
 }
 
 interface JDStepProps {
@@ -20,6 +23,9 @@ const emptyManual = (): ManualForm => ({ title: "", company: "", text: "" });
 
 const inputCls = "w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#534AB7]/40 focus:border-[#534AB7]";
 
+const MIN_JDS = 5;
+const MAX_JDS = 10;
+
 export default function JDStep({ jds, onJDsChange, onComplete }: JDStepProps) {
   const [role, setRole] = useState("");
   const [location, setLocation] = useState("");
@@ -29,8 +35,12 @@ export default function JDStep({ jds, onJDsChange, onComplete }: JDStepProps) {
   const [manualMode, setManualMode] = useState(false);
   const [manual, setManual] = useState<ManualForm>(emptyManual());
 
+  const atMax = jds.length >= MAX_JDS;
+  const canAnalyze = jds.length >= MIN_JDS;
+
   const fetchJDs = async () => {
     if (!role.trim() || !location.trim()) { setError("Please enter both role and location."); return; }
+    if (atMax) { setError(`Maximum ${MAX_JDS} JDs reached.`); return; }
     setError("");
     setLoading(true);
     try {
@@ -41,7 +51,11 @@ export default function JDStep({ jds, onJDsChange, onComplete }: JDStepProps) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to fetch JDs");
-      onJDsChange([...jds, ...(data.jds as JobDescription[])]);
+      const incoming = data.jds as JobDescription[];
+      const existingTitles = new Set(jds.map((j) => j.title));
+      const newUnique = incoming.filter((j) => !existingTitles.has(j.title));
+      const remaining = MAX_JDS - jds.length;
+      onJDsChange([...jds, ...newUnique.slice(0, remaining)]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -68,7 +82,7 @@ export default function JDStep({ jds, onJDsChange, onComplete }: JDStepProps) {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">Job Descriptions</h2>
-        <p className="text-gray-500 dark:text-gray-400 text-sm">Generate JDs with AI or paste your own. Add as many as you like.</p>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">Generate JDs with AI or paste your own. Add between 5 and 15.</p>
       </div>
 
       {/* AI Fetch Panel */}
@@ -85,14 +99,19 @@ export default function JDStep({ jds, onJDsChange, onComplete }: JDStepProps) {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button onClick={fetchJDs} disabled={loading} className="flex items-center gap-2 px-5 py-2 bg-[#534AB7] text-white rounded-full text-sm font-medium hover:bg-[#4339a0] transition-colors disabled:opacity-60">
+          <button onClick={fetchJDs} disabled={loading || atMax} className="flex items-center gap-2 px-5 py-2 bg-[#534AB7] text-white rounded-full text-sm font-medium hover:bg-[#4339a0] transition-colors disabled:opacity-60">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-            {loading ? "Generating…" : "Generate 3 JDs"}
+            {loading ? "Fetching…" : "Fetch Live JDs"}
           </button>
-          <button onClick={() => { setManualMode(!manualMode); setError(""); }} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-            <Plus className="w-4 h-4" />
-            Add Manually
-          </button>
+          {!atMax && (
+            <button onClick={() => { setManualMode(!manualMode); setError(""); }} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+              <Plus className="w-4 h-4" />
+              Add Manually
+            </button>
+          )}
+          {atMax && (
+            <p className="self-center text-xs text-amber-600 dark:text-amber-400 font-medium">Maximum {MAX_JDS} JDs reached</p>
+          )}
         </div>
       </div>
 
@@ -133,14 +152,19 @@ export default function JDStep({ jds, onJDsChange, onComplete }: JDStepProps) {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              {jds.length} job description{jds.length !== 1 ? "s" : ""} added
+              {jds.length}/{MAX_JDS} JDs added
             </p>
-            {jds.length > 1 && (
+            {canAnalyze && (
               <span className="text-xs text-[#534AB7] bg-[#534AB7]/10 rounded-full px-2.5 py-0.5 font-medium">
                 All {jds.length} will be analyzed
               </span>
             )}
           </div>
+          {!canAnalyze && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+              Add at least {MIN_JDS} JDs to analyze — {MIN_JDS - jds.length} more needed
+            </p>
+          )}
 
           {jds.map((jd, i) => (
             <div key={i} className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
@@ -153,8 +177,21 @@ export default function JDStep({ jds, onJDsChange, onComplete }: JDStepProps) {
                     <Briefcase className="w-3.5 h-3.5 text-[#534AB7]" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{jd.title}</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{jd.company}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{jd.title}</p>
+                      {jd.source === "live" && (
+                        <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Live</span>
+                      )}
+                      {jd.source === "ai" && (
+                        <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">AI</span>
+                      )}
+                      {jd.source === "live" && jd.platform && (
+                        <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">{jd.platform}</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                      {jd.company}{jd.location ? ` · ${jd.location}` : ""}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 ml-2 shrink-0">
@@ -175,8 +212,14 @@ export default function JDStep({ jds, onJDsChange, onComplete }: JDStepProps) {
       )}
 
       {jds.length > 0 && (
-        <button onClick={onComplete} className="w-full py-3 bg-[#534AB7] text-white rounded-full font-medium hover:bg-[#4339a0] transition-colors">
-          Analyze CV Against {jds.length} JD{jds.length !== 1 ? "s" : ""} →
+        <button
+          onClick={onComplete}
+          disabled={!canAnalyze}
+          className="w-full py-3 bg-[#534AB7] text-white rounded-full font-medium hover:bg-[#4339a0] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {canAnalyze
+            ? `Analyze CV Against ${jds.length} JD${jds.length !== 1 ? "s" : ""} →`
+            : `Add ${MIN_JDS - jds.length} more JD${MIN_JDS - jds.length !== 1 ? "s" : ""} to analyze`}
         </button>
       )}
     </div>

@@ -30,6 +30,12 @@ export interface AnalysisResult {
 
 export async function POST(req: NextRequest) {
   try {
+    console.log("Starting analysis...");
+
+    if (!process.env.GROQ_API_KEY) {
+      return NextResponse.json({ error: "GROQ_API_KEY not set" }, { status: 500 });
+    }
+
     const { cvText, jds } = await req.json();
 
     if (!cvText || !jds || !Array.isArray(jds) || jds.length === 0) {
@@ -39,41 +45,37 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const jdSummaries = jds
+    if (jds.length < 5) {
+      return NextResponse.json(
+        { error: "Minimum 5 JDs required" },
+        { status: 400 }
+      );
+    }
+
+    const jdItems = jds.slice(0, 5);
+
+    const truncatedCV = cvText.slice(0, 2000);
+
+    const truncatedJDs = jdItems.map((jd: { title: string; company: string; text: string }) => ({
+      ...jd,
+      text: jd.text.slice(0, 300),
+    }));
+
+    const jdSummaries = truncatedJDs
       .map(
         (jd: { title: string; company: string; text: string }, i: number) =>
           `--- JD ${i + 1}: ${jd.title} at ${jd.company} ---\n${jd.text}`
       )
       .join("\n\n");
 
-    const prompt = `You are an expert CV analyst, ATS specialist, and career coach. Analyze the candidate's CV against the provided job descriptions thoroughly.
+    const prompt = `Analyze this CV against the job descriptions. Return ONLY valid JSON, no markdown.
 
-CV:
-${cvText}
+CV: ${truncatedCV}
 
-Job Descriptions:
-${jdSummaries}
+JDs: ${jdSummaries}
 
-Return a single JSON object with EXACTLY these fields:
-
-- "match_score": number 0-100 — overall fit score across ALL job descriptions combined
-- "strong_points": string[] — exactly 10 specific strengths citing concrete evidence from the CV
-- "weak_points": string[] — exactly 10 specific gaps or improvement areas relative to the JDs
-- "summary": string — 2-3 sentence executive summary of the candidate's overall fit
-- "jd_title": string — the single best-matching JD title from the list
-- "per_jd_scores": array with one object per JD (in order), each with:
-    - "title": string (exact JD title)
-    - "company": string (exact company name)
-    - "score": number 0-100 (fit score for this specific JD)
-    - "key_match": string (one specific skill or experience from the CV that strongly matches this JD)
-    - "key_gap": string (one specific skill or requirement from this JD that is missing or weak in the CV)
-- "ats_score": number 0-100 — ATS-friendliness score based on: (1) keyword density relative to JD requirements, (2) presence of standard section headers (Experience, Education, Skills, Summary), (3) clean formatting signals (no tables/columns/graphics inferred from text structure), (4) consistent date formatting, (5) use of common action verbs
-- "ats_tips": string[] — exactly 4 specific, actionable tips to improve the ATS score (reference actual CV content)
-- "keywords": array of exactly 15 objects for the most important technical/professional keywords extracted from the JDs combined, each with:
-    - "word": string (the keyword, e.g. "React", "Python", "Agile", "REST APIs")
-    - "in_cv": boolean (true if this keyword or a recognisable variant appears in the CV)
-
-Be specific. Reference actual content from the CV and JDs. Return only valid JSON, no markdown, no explanation.`;
+JSON schema (all fields required):
+{"match_score":0-100,"ats_score":0-100,"strong_points":["10 strings"],"weak_points":["10 strings"],"summary":"2 sentences","jd_title":"best matching JD title","per_jd_scores":[{"title":"","company":"","score":0-100,"key_match":"","key_gap":""}],"ats_tips":["4 strings"],"keywords":[{"word":"","in_cv":true}]}`;
 
     const completion = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
@@ -91,9 +93,9 @@ Be specific. Reference actual content from the CV and JDs. Return only valid JSO
 
     return NextResponse.json({ analysis });
   } catch (err) {
-    console.error("analyze error:", err);
+    console.log("Error:", err);
     return NextResponse.json(
-      { error: "Failed to analyze CV" },
+      { error: err instanceof Error ? err.message : "Failed to analyze CV" },
       { status: 500 }
     );
   }

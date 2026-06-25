@@ -5,7 +5,17 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req: NextRequest) {
   try {
-    const { candidateName, jobTitle, company, cvText, jdText } = await req.json();
+    if (!process.env.GROQ_API_KEY) {
+      return NextResponse.json({ error: "GROQ_API_KEY not set" }, { status: 500 });
+    }
+
+    const { candidateName, jobTitle, company, cvText, jdText } = await req.json() as {
+      candidateName?: string;
+      jobTitle?: string;
+      company?: string;
+      cvText?: string;
+      jdText?: string;
+    };
 
     if (!candidateName || !jobTitle || !company || !cvText) {
       return NextResponse.json(
@@ -14,30 +24,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const prompt = `You are an expert career coach writing a tailored cover letter.
+    const truncatedCV = cvText.slice(0, 1500);
+    const truncatedJD = jdText ? jdText.slice(0, 400) : "Not provided";
 
-Candidate name: ${candidateName}
-Target role: ${jobTitle}
-Target company: ${company}
+    const prompt = `Generate a professional 3-paragraph cover letter for ${candidateName} applying for ${jobTitle} at ${company}.
 
-CV (for context):
-${cvText.slice(0, 3000)}
+CV: ${truncatedCV}
 
-Job description (for context):
-${jdText ? jdText.slice(0, 1500) : "Not provided"}
+Job Description: ${truncatedJD}
 
-Write a professional, compelling 3-paragraph cover letter. Structure:
-- Paragraph 1 (3-4 sentences): Hook opening that names the specific role, states genuine interest in the company, and summarises fit in one strong sentence.
-- Paragraph 2 (4-5 sentences): Highlight 2-3 concrete achievements from the CV that directly map to the JD requirements. Use specific numbers/outcomes where they appear in the CV.
-- Paragraph 3 (2-3 sentences): Express enthusiasm, mention next steps (interview), and a professional sign-off line.
-
-Tone: confident, specific, not generic. Avoid phrases like "I am writing to apply" or "I believe I would be a great fit".
-Do NOT include a salutation line ("Dear Hiring Manager") or a formal closing ("Yours sincerely") — just the three paragraphs.
-
-Return a JSON object with:
-- "letter": string (the full cover letter, paragraphs separated by \\n\\n)
-
-Return only valid JSON, no markdown.`;
+Return ONLY the cover letter text, no extra commentary.`;
 
     const completion = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
@@ -46,18 +42,13 @@ Return only valid JSON, no markdown.`;
       max_tokens: 1000,
     });
 
-    const content = completion.choices[0]?.message?.content ?? "{}";
-    const cleaned = content
-      .replace(/```json\n?|```\n?/g, "")
-      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ")
-      .trim();
-    const data = JSON.parse(cleaned) as { letter: string };
+    const letter = completion.choices[0]?.message?.content?.trim() ?? "";
 
-    return NextResponse.json(data);
+    return NextResponse.json({ letter });
   } catch (err) {
-    console.error("cover-letter error:", err);
+    console.log("Cover letter error:", err);
     return NextResponse.json(
-      { error: "Failed to generate cover letter" },
+      { error: err instanceof Error ? err.message : "Failed to generate cover letter" },
       { status: 500 }
     );
   }
