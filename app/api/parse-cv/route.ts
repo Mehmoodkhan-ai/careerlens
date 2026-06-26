@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import pdfParse from "pdf-parse";
 
 export const maxDuration = 30;
 
@@ -30,19 +31,8 @@ export async function POST(req: NextRequest) {
       const result = await mammoth.extractRawText({ buffer });
       text = result.value;
     } else if (fileName.endsWith(".pdf")) {
-      const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
-      const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) });
-      const pdfDoc = await loadingTask.promise;
-      const pages: string[] = [];
-      for (let i = 1; i <= pdfDoc.numPages; i++) {
-        const page = await pdfDoc.getPage(i);
-        const content = await page.getTextContent();
-        const pageText = content.items
-          .map((item) => ("str" in item ? item.str : ""))
-          .join(" ");
-        pages.push(pageText);
-      }
-      text = pages.join("\n");
+      const result = await pdfParse(buffer);
+      text = result.text;
     } else {
       return NextResponse.json(
         { error: "Unsupported file type. Use PDF, DOCX, or TXT." },
