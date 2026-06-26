@@ -39,7 +39,8 @@ Return ONLY the cover letter text, no extra commentary.`;
       model: "llama-3.3-70b-versatile",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.7,
-      max_tokens: 1000,
+      max_tokens: 800,
+      stream: false,
     });
 
     const letter = completion.choices[0]?.message?.content?.trim() ?? "";

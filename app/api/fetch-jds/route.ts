@@ -75,7 +75,9 @@ export async function POST(req: NextRequest) {
         .join(', '),
     }));
 
-    return NextResponse.json({ jds });
+    return NextResponse.json({ jds }, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' },
+    });
   } catch (err) {
     console.error('fetch-jds error:', err);
     return NextResponse.json({ error: 'Failed to fetch JDs' }, { status: 500 });

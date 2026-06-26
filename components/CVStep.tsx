@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, memo } from "react";
 import { Upload, FileText, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
 interface CVStepProps {
   onComplete: (cvText: string) => void;
 }
 
-export default function CVStep({ onComplete }: CVStepProps) {
+function CVStep({ onComplete }: CVStepProps) {
   const [mode, setMode] = useState<"upload" | "paste">("upload");
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -146,3 +146,4 @@ export default function CVStep({ onComplete }: CVStepProps) {
     </div>
   );
 }
+export default memo(CVStep);

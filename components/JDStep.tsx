@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Search, Plus, Trash2, ChevronDown, ChevronUp, Loader2, AlertCircle, Briefcase } from "lucide-react";
 
 export interface JobDescription {
@@ -26,7 +26,7 @@ const inputCls = "w-full border border-gray-200 dark:border-gray-700 rounded-lg 
 const MIN_JDS = 5;
 const MAX_JDS = 10;
 
-export default function JDStep({ jds, onJDsChange, onComplete }: JDStepProps) {
+function JDStep({ jds, onJDsChange, onComplete }: JDStepProps) {
   const [role, setRole] = useState("");
   const [location, setLocation] = useState("");
   const [loading, setLoading] = useState(false);
@@ -222,3 +222,4 @@ export default function JDStep({ jds, onJDsChange, onComplete }: JDStepProps) {
     </div>
   );
 }
+export default memo(JDStep);

@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Stepper from "@/components/Stepper";
 import CVStep from "@/components/CVStep";
 import JDStep, { type JobDescription } from "@/components/JDStep";
-import AnalysisStep from "@/components/AnalysisStep";
 import DarkModeToggle from "@/components/DarkModeToggle";
 import HistoryPanel from "@/components/HistoryPanel";
 import RestoreToast from "@/components/RestoreToast";
 import { Brain, Clock } from "lucide-react";
 import { saveDraft, clearDraft } from "@/lib/storage";
+
+const AnalysisStep = dynamic(() => import("@/components/AnalysisStep"), { ssr: false });
 
 export default function Home() {
   const [step, setStep] = useState(0);
@@ -28,10 +30,10 @@ export default function Home() {
   }, [cvText, jds]);
 
   // ── Step management ─────────────────────────────────────────────────────────
-  const completeStep = (s: number) => {
+  const completeStep = useCallback((s: number) => {
     setCompletedSteps((prev) => [...new Set([...prev, s])]);
     setStep(s + 1);
-  };
+  }, []);
 
   const reset = useCallback(() => {
     setStep(0);
@@ -41,15 +43,22 @@ export default function Home() {
     clearDraft();
   }, []);
 
+  const handleCVComplete = useCallback((text: string) => {
+    setCvText(text);
+    completeStep(0);
+  }, [completeStep]);
+
+  const handleJDComplete = useCallback(() => completeStep(1), [completeStep]);
+
   // ── Restore handler ─────────────────────────────────────────────────────────
-  const handleRestore = (restoredCV: string, restoredJDs: JobDescription[]) => {
+  const handleRestore = useCallback((restoredCV: string, restoredJDs: JobDescription[]) => {
     setCvText(restoredCV);
     setJDs(restoredJDs);
     if (restoredCV) {
       setCompletedSteps([0]);
       setStep(1);
     }
-  };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors">
@@ -81,11 +90,9 @@ export default function Home() {
         <Stepper currentStep={step} onStepClick={setStep} completedSteps={completedSteps} />
 
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 sm:p-8">
-          {step === 0 && (
-            <CVStep onComplete={(text) => { setCvText(text); completeStep(0); }} />
-          )}
+          {step === 0 && <CVStep onComplete={handleCVComplete} />}
           {step === 1 && (
-            <JDStep jds={jds} onJDsChange={setJDs} onComplete={() => completeStep(1)} />
+            <JDStep jds={jds} onJDsChange={setJDs} onComplete={handleJDComplete} />
           )}
           {step === 2 && (
             <AnalysisStep cvText={cvText} jds={jds} onReset={reset} />
