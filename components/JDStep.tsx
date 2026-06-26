@@ -52,10 +52,7 @@ export default function JDStep({ jds, onJDsChange, onComplete }: JDStepProps) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to fetch JDs");
       const incoming = data.jds as JobDescription[];
-      const existingTitles = new Set(jds.map((j) => j.title));
-      const newUnique = incoming.filter((j) => !existingTitles.has(j.title));
-      const remaining = MAX_JDS - jds.length;
-      onJDsChange([...jds, ...newUnique.slice(0, remaining)]);
+      onJDsChange([...jds, ...incoming].slice(0, MAX_JDS));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -82,7 +79,7 @@ export default function JDStep({ jds, onJDsChange, onComplete }: JDStepProps) {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">Job Descriptions</h2>
-        <p className="text-gray-500 dark:text-gray-400 text-sm">Generate JDs with AI or paste your own. Add between 5 and 15.</p>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">Generate JDs with AI or paste your own. Add between 5 and 10.</p>
       </div>
 
       {/* AI Fetch Panel */}
