@@ -27,36 +27,33 @@ export async function POST(req: NextRequest) {
     const truncatedCV = cvText.slice(0, 1500);
     const truncatedJD = jdText ? jdText.slice(0, 400) : "Not provided";
 
-    const systemPrompt = `You are an expert career coach who writes highly effective cover letters with a 98% interview callback rate.
+    const systemPrompt = `You are an expert career coach. Write a professional cover letter in plain industry-standard format.
 
-Write a cover letter using this proven structure:
+FORMAT:
+[City, Date]
 
-PARAGRAPH 1 - HOOK (2-3 sentences):
-- Never start with 'I am applying for'
-- Start with a specific achievement or insight that connects to the role
-- Show you understand the company's mission/product
+[Hiring Manager Name or 'Hiring Manager']
+[Company Name]
 
-PARAGRAPH 2 - VALUE PROPOSITION (3-4 sentences):
-- Mention 2-3 specific achievements with numbers/metrics where possible
-- Directly reference technologies and skills from the job description
-- Show impact, not just responsibilities
+Dear Hiring Manager,
 
-PARAGRAPH 3 - WHY THIS COMPANY (2-3 sentences):
-- Reference something specific about the company
-- Connect their mission to your personal goals
-- Show genuine interest, not desperation
+[PARAGRAPH 1 - Opening: Why this role and company, show genuine interest, 2-3 sentences]
 
-CLOSING (2 sentences):
-- Confident call to action
-- Professional sign-off
+[PARAGRAPH 2 - Value: 2-3 specific skills and achievements that match the job requirements, use numbers where possible, 3-4 sentences]
+
+[PARAGRAPH 3 - Fit: Why you are the right person, what you will bring to the team, 2-3 sentences]
+
+[PARAGRAPH 4 - Closing: Thank them, call to action, 2 sentences]
+
+Sincerely,
+[Candidate Name from CV]
 
 RULES:
-- Never use generic phrases like 'I am a hard worker', 'team player', 'passionate'
-- Always use active voice
-- Keep total length under 350 words
-- Make it specific to the JD and CV provided
-- Sound human, not robotic
-- Extract candidate name from CV if available`;
+- Plain text only, no bullet points, no bold, no markdown
+- Professional and concise tone
+- Under 300 words total
+- Extract candidate name and city from CV if available
+- Sound human and natural`;
 
     const userPrompt = `Write a cover letter for ${candidateName} applying for ${jobTitle} at ${company}.
 
