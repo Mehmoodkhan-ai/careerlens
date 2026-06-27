@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import Stepper from "@/components/Stepper";
 import CVStep from "@/components/CVStep";
 import JDStep, { type JobDescription } from "@/components/JDStep";
 import DarkModeToggle from "@/components/DarkModeToggle";
 import HistoryPanel from "@/components/HistoryPanel";
 import RestoreToast from "@/components/RestoreToast";
-import { Brain, Clock } from "lucide-react";
+import { Brain, Clock, Sparkles } from "lucide-react";
 import { saveDraft, clearDraft } from "@/lib/storage";
 
 const AnalysisStep = dynamic(() => import("@/components/AnalysisStep"), { ssr: false });
@@ -73,6 +74,13 @@ export default function Home() {
             <p className="text-xs text-gray-400 dark:text-gray-500 leading-none mt-0.5 hidden sm:block">Powered by Groq AI</p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            <Link
+              href="/cv-maker"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold bg-[#534AB7] text-white rounded-lg shadow-sm shadow-[#534AB7]/40 hover:bg-[#4840A0] hover:scale-105 hover:shadow-md hover:shadow-[#534AB7]/30 active:scale-95 transition-all duration-150"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">CV Maker</span>
+            </Link>
             <button
               onClick={() => setHistoryOpen(true)}
               className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
