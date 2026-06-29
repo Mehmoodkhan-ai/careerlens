@@ -45,7 +45,7 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-20 sm:py-28 text-center relative">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#534AB7]/10 text-[#534AB7] dark:text-[#8B85E8] rounded-full text-xs font-semibold mb-6">
             <Sparkles className="w-3.5 h-3.5" />
-            Powered by Groq AI · Free forever
+            Powered by Anas · Premium
           </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-gray-50 leading-tight tracking-tight mb-6">
             Land More Interviews
