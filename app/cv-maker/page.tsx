@@ -25,10 +25,11 @@ const SKILL_CATEGORIES = ["Frontend", "Backend", "Database", "Deployment", "Auto
 const STEPS = ["Template", "Personal", "Summary", "Skills", "Experience", "Projects", "Education", "Certificates"] as const;
 
 const TEMPLATES: { id: TemplateId; name: string; description: string }[] = [
-  { id: "classic", name: "Classic", description: "Clean minimal ATS-friendly with horizontal dividers" },
+  { id: "classic",       name: "Classic",       description: "Name left-aligned, skills table, horizontal dividers — ATS-friendly" },
+  { id: "professional",  name: "Professional",  description: "Name & contact centered, company-first experience, clean minimal layout" },
   { id: "modern-purple", name: "Modern Purple", description: "Purple accents, left-bar section headers" },
-  { id: "executive", name: "Executive", description: "Two-column dark sidebar with white content" },
-  { id: "minimal-dark", name: "Minimal Dark", description: "Dark header, clean white body, bold type" },
+  { id: "executive",     name: "Executive",     description: "Two-column dark sidebar with white content" },
+  { id: "minimal-dark",  name: "Minimal Dark",  description: "Dark header, clean white body, bold type" },
   { id: "creative-tech", name: "Creative Tech", description: "Teal accents, skill tags, dev-focused layout" },
 ];
 
@@ -64,6 +65,20 @@ function TemplatePreview({ id }: { id: TemplateId }) {
       <div className="space-y-1"><div className="h-1 w-full bg-gray-200 rounded-sm" /><div className="h-1 w-3/4 bg-gray-200 rounded-sm" /></div>
       <div className="h-px bg-gray-300" />
       <div className="space-y-1"><div className="h-1 w-full bg-gray-200 rounded-sm" /><div className="h-1 w-5/6 bg-gray-200 rounded-sm" /></div>
+    </div>
+  );
+  if (id === "professional") return (
+    <div className="w-full h-20 bg-white rounded border border-gray-200 p-2 space-y-1.5">
+      <div className="flex flex-col items-center gap-1">
+        <div className="h-2 w-16 bg-gray-800 rounded-sm" />
+        <div className="h-1 w-24 bg-gray-300 rounded-sm" />
+      </div>
+      <div className="h-px bg-gray-300" />
+      <div className="space-y-1 pt-0.5">
+        <div className="h-1.5 w-14 bg-gray-700 rounded-sm" />
+        <div className="h-1 w-full bg-gray-200 rounded-sm" />
+        <div className="h-1 w-4/5 bg-gray-200 rounded-sm" />
+      </div>
     </div>
   );
   if (id === "modern-purple") return (
@@ -549,7 +564,7 @@ export default function CVMakerPage() {
         {[
           ["⚡", "Instant", "PDF in minutes"],
           ["✏️", "Editable", "Full control before download"],
-          ["📋", "ATS-ready", "5 professional templates"],
+          ["📋", "ATS-ready", "6 professional templates"],
         ].map(([icon, title, desc]) => (
           <div key={title} className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
             <p className="text-base mb-1">{icon}</p>

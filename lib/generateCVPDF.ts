@@ -1,5 +1,6 @@
 export type TemplateId =
   | "classic"
+  | "professional"
   | "modern-purple"
   | "executive"
   | "minimal-dark"
@@ -58,6 +59,7 @@ export async function generateCVPDF(
   pageMode: PageMode = "2-page"
 ): Promise<void> {
   switch (templateId) {
+    case "professional":  return generateProfessional(data, pageMode);
     case "modern-purple": return generateModernPurple(data, pageMode);
     case "executive":     return generateExecutive(data, pageMode);
     case "minimal-dark":  return generateMinimalDark(data, pageMode);
@@ -70,18 +72,18 @@ export async function generateCVPDF(
 
 function cfg(is1: boolean) {
   return {
-    mg:         is1 ? 10  : 15,   // margin mm  (0.4 / 0.6 in)
+    mg:         is1 ? 10  : 15,
     fsName:     is1 ? 16  : 20,
     fsHead:     is1 ? 9   : 11,
     fsBody:     is1 ? 8   : 10,
     fsSml:      is1 ? 7.5 : 9,
-    lhBody:     is1 ? 4   : 5,    // body line-height
-    lhSml:      is1 ? 3.5 : 4.5,  // contact line-height
-    spSec:      is1 ? 3   : 5,    // gap after section rule
-    spEntry:    is1 ? 2   : 4,    // gap after each entry block
-    spBullet:   is1 ? 1   : 1.5,  // gap after each bullet
-    skillCatW:  is1 ? 28  : 38,   // category column width
-    pgBotRes:   8,                 // reserved mm at bottom for page number
+    lhBody:     is1 ? 4   : 5,
+    lhSml:      is1 ? 3.5 : 4.5,
+    spSec:      is1 ? 3   : 5,
+    spEntry:    is1 ? 2   : 4,
+    spBullet:   is1 ? 1   : 1.5,
+    skillCatW:  is1 ? 28  : 38,
+    pgBotRes:   8,
   };
 }
 
@@ -118,7 +120,7 @@ async function generateClassic(data: CVPDFData, pageMode: PageMode): Promise<voi
     const out = is1 && ls.length > 1 ? [`${(ls[0] ?? "").trimEnd()}…`] : ls;
     gap(out.length * c.lhBody + c.spBullet);
     doc.text("•", c.mg + 3, y);
-    out.forEach((line, i) => doc.text(line, textX, y + i * c.lhBody));
+    out.forEach((ln, i) => doc.text(ln, textX, y + i * c.lhBody));
     y += out.length * c.lhBody + c.spBullet;
   };
 
@@ -244,12 +246,240 @@ async function generateClassic(data: CVPDFData, pageMode: PageMode): Promise<voi
     }
   }
 
-  // Page numbers
   const total = doc.getNumberOfPages();
   for (let p = 1; p <= total; p++) {
     doc.setPage(p);
     doc.setFontSize(7.5); doc.setFont("helvetica", "normal"); doc.setTextColor(150, 150, 150);
     doc.text(`Page ${p} of ${total}`, pageW / 2, pageH - 4, { align: "center" });
+  }
+
+  doc.save(`${safeName(data.personalInfo.name)}-cv.pdf`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEMPLATE 2 — Professional (centered header, company-first experience)
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function generateProfessional(data: CVPDFData, pageMode: PageMode): Promise<void> {
+  const { default: jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const is1 = pageMode === "1-page";
+  const c = cfg(is1);
+  const cW = pageW - c.mg * 2;
+  const maxY = pageH - c.mg - c.pgBotRes;
+  const cx = pageW / 2;
+
+  const black: [number, number, number] = [10, 10, 10];
+  const dark:  [number, number, number] = [50, 50, 50];
+  const med:   [number, number, number] = [110, 110, 110];
+  const divC:  [number, number, number] = [180, 180, 180];
+
+  let y = c.mg;
+  const gap = (needed: number) => {
+    if (y + needed > maxY && !is1) { doc.addPage(); y = c.mg; }
+  };
+
+  const bullet = (text: string) => {
+    if (!text.trim()) return;
+    const bW = doc.getTextWidth("• ");
+    const textX = c.mg + 3 + bW;
+    const textW = cW - 3 - bW;
+    const ls = doc.splitTextToSize(text.trim(), textW) as string[];
+    const out = is1 && ls.length > 1 ? [`${(ls[0] ?? "").trimEnd()}…`] : ls;
+    gap(out.length * c.lhBody + c.spBullet);
+    doc.text("•", c.mg + 3, y);
+    out.forEach((ln, i) => doc.text(ln, textX, y + i * c.lhBody));
+    y += out.length * c.lhBody + c.spBullet;
+  };
+
+  const sec = (title: string) => {
+    gap(14);
+    doc.setFontSize(c.fsHead); doc.setFont("helvetica", "bold"); doc.setTextColor(...black);
+    doc.text(title.toUpperCase(), c.mg, y); y += 2.5;
+    doc.setDrawColor(...divC); doc.setLineWidth(0.35);
+    doc.line(c.mg, y, pageW - c.mg, y); y += c.spSec;
+  };
+
+  // ── Header — centered ────────────────────────────────────────────────────
+  doc.setFontSize(c.fsName); doc.setFont("helvetica", "bold"); doc.setTextColor(...black);
+  doc.text(data.personalInfo.name || "Your Name", cx, y, { align: "center" }); y += is1 ? 5 : 7;
+
+  if (data.personalInfo.title.trim()) {
+    doc.setFontSize(is1 ? 9 : 11); doc.setFont("helvetica", "normal"); doc.setTextColor(...dark);
+    doc.text(data.personalInfo.title, cx, y, { align: "center" }); y += is1 ? 3.5 : 5;
+  }
+
+  // Contact centered, • separated
+  const ci = [
+    data.personalInfo.email,
+    data.personalInfo.phone,
+    data.personalInfo.location,
+    data.personalInfo.linkedin,
+    data.personalInfo.github,
+    data.personalInfo.portfolio,
+  ].filter(Boolean);
+  if (ci.length) {
+    doc.setFontSize(c.fsSml); doc.setFont("helvetica", "normal"); doc.setTextColor(...med);
+    const cls = doc.splitTextToSize(ci.join("  •  "), cW) as string[];
+    for (const cl of cls) { doc.text(cl, cx, y, { align: "center" }); y += c.lhSml; }
+    y += is1 ? 1 : 2;
+  }
+
+  doc.setDrawColor(...divC); doc.setLineWidth(0.5);
+  doc.line(c.mg, y, pageW - c.mg, y); y += is1 ? 4 : 6;
+
+  // ── Professional Summary ──────────────────────────────────────────────────
+  if (data.summary.trim()) {
+    sec("Professional Summary");
+    doc.setFontSize(c.fsBody); doc.setFont("helvetica", "normal"); doc.setTextColor(...dark);
+    const sl = doc.splitTextToSize(data.summary.trim(), cW) as string[];
+    const so = is1 ? sl.slice(0, 3) : sl;
+    gap(so.length * c.lhBody);
+    doc.text(so, c.mg, y); y += so.length * c.lhBody + (is1 ? 2 : 4);
+  }
+
+  // ── Experience ───────────────────────────────────────────────────────────
+  const exps = data.experience.filter(e => e.company || e.title || e.bullets.length > 0);
+  if (exps.length) {
+    sec("Experience");
+    for (const exp of exps) {
+      gap(18);
+      // Company (bold left) + Duration (right)
+      let compMaxW = cW;
+      if (exp.duration) {
+        doc.setFontSize(c.fsSml); doc.setFont("helvetica", "normal");
+        compMaxW = cW - doc.getTextWidth(exp.duration) - 3;
+      }
+      doc.setFontSize(c.fsBody); doc.setFont("helvetica", "bold"); doc.setTextColor(...black);
+      doc.text((doc.splitTextToSize(exp.company || exp.title || "", compMaxW) as string[])[0] ?? "", c.mg, y);
+      if (exp.duration) {
+        doc.setFont("helvetica", "normal"); doc.setFontSize(c.fsSml); doc.setTextColor(...med);
+        doc.text(exp.duration, pageW - c.mg, y, { align: "right" });
+      }
+      y += is1 ? 3.5 : 5;
+      // Role title (italic, below company)
+      if (exp.title && exp.company) {
+        doc.setFontSize(c.fsBody); doc.setFont("helvetica", "italic"); doc.setTextColor(...dark);
+        doc.text(exp.title, c.mg, y); y += is1 ? 3 : 4.5;
+      }
+      // Bullets
+      doc.setFontSize(c.fsBody); doc.setFont("helvetica", "normal"); doc.setTextColor(...dark);
+      for (const b of exp.bullets) bullet(b);
+      y += c.spEntry;
+    }
+  }
+
+  // ── Projects ─────────────────────────────────────────────────────────────
+  const projs = data.projects.filter(p => p.name.trim());
+  if (projs.length) {
+    sec("Projects");
+    for (const p of projs) {
+      gap(18);
+      // Name (bold left) + liveLink (italic right)
+      let nameMaxW = cW;
+      if (p.liveLink) {
+        doc.setFontSize(c.fsSml); doc.setFont("helvetica", "italic");
+        nameMaxW = cW - doc.getTextWidth(p.liveLink) - 3;
+      }
+      doc.setFontSize(c.fsBody); doc.setFont("helvetica", "bold"); doc.setTextColor(...black);
+      doc.text((doc.splitTextToSize(p.name, nameMaxW) as string[])[0] ?? "", c.mg, y);
+      if (p.liveLink) {
+        doc.setFont("helvetica", "italic"); doc.setFontSize(c.fsSml); doc.setTextColor(...med);
+        doc.text(p.liveLink, pageW - c.mg, y, { align: "right" });
+      }
+      y += is1 ? 3.5 : 5;
+      // Tech stack line
+      if (p.techStack.trim()) {
+        doc.setFontSize(c.fsSml); doc.setFont("helvetica", "italic"); doc.setTextColor(...med);
+        const tls = doc.splitTextToSize(`Tech: ${p.techStack}`, cW) as string[];
+        const to = is1 ? [tls[0] ?? ""] : tls;
+        gap(to.length * c.lhSml);
+        doc.text(to, c.mg, y); y += to.length * c.lhSml + (is1 ? 1 : 2);
+      }
+      // Description
+      if (p.description.trim()) {
+        doc.setFontSize(c.fsBody); doc.setFont("helvetica", "normal"); doc.setTextColor(...dark);
+        const dl = doc.splitTextToSize(p.description, cW) as string[];
+        const dOut = is1 && dl.length > 2 ? dl.slice(0, 2) : dl;
+        gap(dOut.length * c.lhBody);
+        doc.text(dOut, c.mg, y); y += dOut.length * c.lhBody;
+      }
+      y += c.spEntry;
+    }
+  }
+
+  // ── Skills ───────────────────────────────────────────────────────────────
+  const activeSkills = data.skills.filter(s => s.items.length > 0);
+  if (activeSkills.length) {
+    sec("Skills");
+    for (const sk of activeSkills) {
+      const ils = doc.splitTextToSize(sk.items.join(", "), cW - c.skillCatW) as string[];
+      const iOut = is1 ? [ils[0] ?? ""] : ils;
+      const h = Math.max(iOut.length * c.lhBody, c.lhBody);
+      gap(h + 1.5);
+      doc.setFontSize(c.fsBody); doc.setFont("helvetica", "bold"); doc.setTextColor(...dark);
+      doc.text(sk.category, c.mg, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(iOut, c.mg + c.skillCatW, y); y += h + 1.5;
+    }
+    y += is1 ? 0 : 2;
+  }
+
+  // ── Education & Certifications ────────────────────────────────────────────
+  const hasEdu  = data.education.some(e => e.degree.trim());
+  const hasCerts = data.certificates.some(c2 => c2.names.some(n => n.trim()));
+  if (hasEdu || hasCerts) {
+    sec("Education & Certifications");
+
+    for (const edu of data.education.filter(e => e.degree.trim())) {
+      gap(14);
+      let degMaxW = cW;
+      if (edu.dates) {
+        doc.setFontSize(c.fsSml); doc.setFont("helvetica", "normal");
+        degMaxW = cW - doc.getTextWidth(edu.dates) - 3;
+      }
+      doc.setFontSize(c.fsBody); doc.setFont("helvetica", "bold"); doc.setTextColor(...black);
+      doc.text((doc.splitTextToSize(edu.degree, degMaxW) as string[])[0] ?? "", c.mg, y);
+      if (edu.dates) {
+        doc.setFont("helvetica", "normal"); doc.setFontSize(c.fsSml); doc.setTextColor(...med);
+        doc.text(edu.dates, pageW - c.mg, y, { align: "right" });
+      }
+      y += is1 ? 3.5 : 5;
+      if (edu.institution.trim()) {
+        doc.setFontSize(c.fsBody); doc.setFont("helvetica", "italic"); doc.setTextColor(...dark);
+        doc.text(edu.institution, c.mg, y); y += is1 ? 3.5 : 5;
+      }
+      y += c.spEntry * 0.5;
+    }
+
+    for (const cert of data.certificates.filter(c2 => c2.names.some(n => n.trim()))) {
+      for (const n of cert.names.filter(n => n.trim())) {
+        gap(8);
+        const meta = [cert.issuer, cert.date].filter(Boolean).join("  •  ");
+        let nMaxW = cW;
+        if (meta) {
+          doc.setFontSize(c.fsSml); doc.setFont("helvetica", "normal");
+          nMaxW = cW - doc.getTextWidth(meta) - 3;
+        }
+        doc.setFontSize(c.fsBody); doc.setFont("helvetica", "bold"); doc.setTextColor(...dark);
+        doc.text((doc.splitTextToSize(n, nMaxW) as string[])[0] ?? "", c.mg, y);
+        if (meta) {
+          doc.setFont("helvetica", "normal"); doc.setFontSize(c.fsSml); doc.setTextColor(...med);
+          doc.text(meta, pageW - c.mg, y, { align: "right" });
+        }
+        y += is1 ? 3.5 : 5;
+      }
+      y += c.spEntry * 0.5;
+    }
+  }
+
+  const total = doc.getNumberOfPages();
+  for (let pg = 1; pg <= total; pg++) {
+    doc.setPage(pg);
+    doc.setFontSize(7.5); doc.setFont("helvetica", "normal"); doc.setTextColor(150, 150, 150);
+    doc.text(`Page ${pg} of ${total}`, pageW / 2, pageH - 4, { align: "center" });
   }
 
   doc.save(`${safeName(data.personalInfo.name)}-cv.pdf`);
